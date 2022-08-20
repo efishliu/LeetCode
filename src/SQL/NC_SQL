@@ -1,0 +1,528 @@
+1.SQL1 查找最晚入职员工的所有信息
+难度：入门
+SELECT * FROM employees ORDER BY hire_date DESC LIMIT 1;
+或者
+SELECT * FROM employees WHERE hire_date =
+(SELECT MAX(hire_date) hire_date from employees);
+
+
+2.SQL2 查找入职员工时间排名倒数第三的员工所有信息,
+注意：可能会存在同一个日期入职的员工，所以入职员工时间排名倒数第三的员工可能不止一个。
+难度：简单
+SELECT * FROM employees WHERE hire_date =
+(SELECT DISTINCT hire_date FROM employees ORDER BY hire_date DESC LIMIT 2, 1)
+其中LIMIT m,n 表示从第m个数据开始取n个数据, LIMIT n表示从0开始取n个数据
+当有重复数据时，可以考虑DISTINCT
+
+3.SQL3 查找当前薪水详情以及部门编号dept_no
+有一个全部员工的薪水表salaries, 有一个各个部门的领导表dept_manager
+请你查找各个部门当前领导的薪水详情以及其对应部门编号dept_no，输出结果以salaries.emp_no升序排序，
+并且请注意输出结果里面dept_no列是最后一列
+难度：中等
+SELECT d.emp_no, salary, from_date, d.to_date, dept_no
+FROM dept_manager AS d LEFT JOIN salaries AS s
+ON d.emp_no = s.emp_no
+ORDER BY emp_no
+两个表的连接操作: xx LEFT JOIN xx ON 条件
+
+4.SQL4 查找所有已经分配部门的员工的last_name和first_name以及dept_no
+查找所有已经分配部门的员工的last_name和first_name以及dept_no
+有一个员工表，employees,有一个部门表，dept_emp
+请你查找所有已经分配部门的员工的last_name和first_name以及dept_no，未分配的部门的员工不显示
+难度：简单
+SELECT last_name, first_name, dept_no
+FROM employees e, dept_emp d
+WHERE e.emp_no = d.emp_no
+
+5.SQL5 查找所有员工的last_name和first_name以及dept_no
+查找所有已经分配部门的员工的last_name和first_name以及dept_no
+有一个员工表，employees,有一个部门表，dept_emp
+请你查找所有已经分配部门的员工的last_name和first_name以及dept_no，也包括暂时没有分配具体部门的员工
+难度：中等
+SELECT last_name, first_name, dept_no
+FROM employees e LEFT JOIN dept_emp d
+ON e.emp_no = d.emp_no
+
+7.SQL7 查找薪水记录超过15条的员工号emp_no以及其对应的记录次数t
+有一个薪水表salaries,请你查找薪水记录超过15条的员工号emp_no以及其对应的记录次数t
+难度：简单
+SELECT emp_no, COUNT(emp_no) t FROM salaries GROUP BY emp_no HAVING COUNT(emp_no) > 15
+
+8.SQL8 找出所有员工当前薪水salary情况
+有一个薪水表，salaries,请你找出所有员工具体的薪水salary情况，对于相同的薪水只显示一次,并按照逆序显示
+简单
+SELECT DISTINCT salary FROM salaries ORDER BY salary DESC;
+或
+SELECT salary FROM salaries GROUP BY salary ORDER BY salary DESC;
+对于distinct与group by的使用：
+1.当对系统的性能高并且数据量大时使用 group by
+2.当对系统的性能不高时或者使用数据量少时两者皆可
+3.尽量使用 group by
+
+10. SQL10 获取所有非manager的员工emp_no
+有一个员工表employees，有一个部门领导表dept_manager
+请你找出所有非部门领导的员工emp_no
+难度：简单
+SELECT emp_no FROM employees WHERE emp_no NOT IN (SELECT emp_no FROM dept_manager);
+或者
+SELECT e.emp_no FROM employees e LEFT JOIN dept_manager d ON e.emp_no = d.emp_no
+WHERE dept_no IS NULL;
+方法1为 NOT IN 子查询的方式，方法2为 左连接 + IS NULL 的方式
+
+11. SQL11 获取所有员工当前的manager
+有一个员工表dept_emp，有一个部门经理表dept_manager
+获取所有的员工和员工对应的经理，如果员工本身是经理的话则不显示
+难度：中等
+SELECT e.emp_no, m.emp_no manager FROM dept_emp e
+LEFT JOIN dept_manager m ON e.dept_no = m.dept_no
+WHERE e.emp_no != m.emp_no
+
+⭐※12 SQL12 获取每个部门中当前员工薪水最高的相关信息
+有一个员工表dept_emp，有一个薪水表salaries
+获取每个部门中当前员工薪水最高的相关信息，给出dept_no, emp_no以及其对应的salary，按照部门编号dept_no升序排列
+难度：困难
+错误示范：
+SELECT dept_no, d.emp_no, MAX(salary) maxSalary
+FROM dept_emp d LEFT JOIN salaries s ON d.emp_no = s.emp_no
+WHERE d.to_date = '9999-01-01' AND s.to_date = '9999-01-01'
+GROUP BY dept_no;
+问题出现在d.emp_no, SELECT 中的字段必须为 GROUP BY 出现的字段或聚集函数或常数
+
+正确做法1：
+SELECT t1.dept_no, t1.emp_no, t2.maxSalary FROM
+ /* 表t1 部门编号,员工编号,当前薪水 */
+(SELECT d1.dept_no, s1.emp_no, s1.salary FROM dept_emp d1 INNER JOIN salaries s1
+ON d1.emp_no = s1.emp_no) AS t1,
+ /* 表t2 部门编号,最大薪水 */
+(SELECT d2.dept_no, MAX(s2.salary) AS maxSalary FROM dept_emp d2 INNER JOIN salaries s2
+ON d2.emp_no = s2.emp_no GROUP BY d2.dept_no) AS t2
+ /* 表t2 部门编号相同且薪水为最大薪水*/
+WHERE t1.dept_no = t2.dept_no AND t1.salary = t2.maxSalary
+ORDER BY t1.dept_no;
+
+※正确做法2：关联子查询，外表固定一个部门，内表进行子查询
+SELECT d1.dept_no, d1.emp_no, s1.salary FROM dept_emp as d1
+INNER JOIN salaries as s1 ON d1.emp_no=s1.emp_no
+WHERE s1.salary IN
+(SELECT MAX(s2.salary) FROM dept_emp as d2 INNER JOIN salaries as s2
+ /* 关键在于 d2.dept_no = d1.dept_no 使得固定住部门*/
+ON d2.emp_no=s2.emp_no AND d2.dept_no = d1.dept_no)
+ORDER BY d1.dept_no;
+
+补充：如果这题不需要给出emp_no(即只求所有部门中当前员工薪水最高值)，则用INNER JOIN和GROUP BY和MAX即可解决：
+SELECT d.dept_no, MAX(s.salary) FROM dept_emp as d
+INNER JOIN salaries as s ON d.emp_no=s.emp_no
+GROUP BY d.dept_no;
+
+15. SQL15 查找employees表emp_no与last_name的员工信息
+有一个员工表employees，请你查找employees表所有emp_no为奇数，
+且last_name不为Mary的员工信息，并按照hire_date逆序排列
+难度：简单
+SELECT * FROM employees WHERE emp_no % 2 = 1 AND last_name != "Mary"
+ORDER BY hire_date DESC;
+补充：不相等有三种表示方式：<> 、!= 、IS NOT
+注意：last_name是varchar类型，所以对它的判断需要加上单引号
+
+16. SQL16 统计出当前各个title类型对应的员工当前薪水对应的平均工资
+有一个员工职称表titles，有一个薪水表salaries请你统计出各个title类型对应的员工薪水对应的平均工资avg。
+结果给出title以及平均工资avg，并且以avg升序排序
+难度：中等
+SELECT t.title, avg(s.salary) FROM titles t INNER JOIN salaries s
+ON t.emp_no = s.emp_no GROUP BY t.title ORDER BY avg(s.salary)
+
+17.	SQL17 获取当前薪水第二多的员工的emp_no以及其对应的薪水salary
+有一个薪水表salaries,请你获取薪水第二多的员工的emp_no以及其对应的薪水salary，
+若有多个员工的薪水为第二多的薪水，则将对应的员工的emp_no和salary全部输出，并按emp_no升序排序。
+难度：简单
+SELECT emp_no, salary FROM salaries WHERE
+salary = (SELECT salary FROM salaries GROUP BY salary ORDER BY salary DESC LIMIT 1,1)
+
+⭐18. SQL18 获取当前薪水第二多的员工的emp_no以及其对应的薪水salary
+有一个员工表employees,有一个薪水表salaries
+请你查找薪水排名第二多的员工编号emp_no、薪水salary、last_name以及first_name，不能使用order by完成
+难度：较难
+方法1：嵌套查询
+SELECT e.emp_no, s.salary, e.last_name, e.first_name FROM employees e
+INNER JOIN salaries s ON e.emp_no = s.emp_no
+WHERE s.salary = (SELECT MAX(salary) FROM salaries
+/* salary小于最大,剩余的最大即为第二大*/
+WHERE salary < (SELECT MAX(salary) FROM salaries))
+
+⭐方法2：自连接+分组+count
+SELECT e.emp_no, s.salary, e.last_name, e.first_name FROM employees e
+INNER JOIN salaries s ON e.emp_no = s.emp_no  --自连接查询
+WHERE s.salary =
+/*当s1<=s2链接并以s1.salary分组时一个s1会对应多个s2*/
+(SELECT s1.salary FROM salaries s1 JOIN salaries s2 ON s1.salary <= s2.salary
+/*去重之后的数量就是对应的名次*/
+GROUP BY s1.salary HAVING COUNT(DISTINCT s2.salary) = 2)
+
+19. SQL19 查找所有员工的last_name和first_name以及对应的dept_name
+有一个员工表employees,有一个部门表departments表,有一个，部门员工关系表dept_emp
+请你查找所有员工的last_name和first_name以及对应的dept_name，也包括暂时没有分配部门的员工
+难度：中等
+SELECT e.last_name, e.first_name, c.dept_name from employees e
+LEFT JOIN (SELECT de.emp_no, de.dept_no, d.dept_name FROM dept_emp de
+           INNER JOIN departments d ON de.dept_no=d.dept_no) AS c
+ON e.emp_no=c.emp_no;
+
+21. SQL21 查找在职员工自入职以来的薪水涨幅情况
+有一个员工表employees，有一个薪水表salaries请你查找在职员工自入职以来的薪水涨幅情况，
+给出在职员工编号emp_no以及其对应的薪水涨幅growth，并按照growth进行升序，
+注: to_date为薪资调整某个结束日期，或者为离职日期，to_date='9999-01-01'时，表示依然在职，无后续调整记录）
+难度：困难
+SELECT pre.emp_no, (cur.salary - pre.salary) AS growth FROM
+--入职前的工资
+(SELECT e.emp_no, s.salary FROM employees e JOIN salaries s ON e.emp_no = s.emp_no AND e.hire_date = s.from_date) pre
+JOIN
+--现在的工资
+(SELECT emp_no, salary FROM salaries WHERE to_date = '9999-01-01') cur
+ON pre.emp_no = cur.emp_no
+ORDER BY growth
+
+或者：
+SELECT pre.emp_no, (cur.salary - pre.salary) AS growth FROM
+--入职前的工资
+(SELECT e.emp_no, s.salary FROM employees e JOIN salaries s ON e.emp_no = s.emp_no AND e.hire_date = s.from_date) pre,
+--现在的工资
+(SELECT emp_no, salary FROM salaries WHERE to_date = '9999-01-01') cur
+where pre.emp_no = cur.emp_no
+ORDER BY growth
+
+22. SQL22 统计各个部门的工资记录数
+有一个部门表departments，有一个部门员工关系表dept_emp，有一个薪水表salaries
+请你统计各个部门的工资记录数，给出部门编码dept_no、部门名称dept_name以及部门在salaries表里面有多少条记录sum，按照dept_no升序排序
+难度：中等
+SELECT ds.dept_no, ds.dept_name, t1.sum FROM departments ds LEFT JOIN
+(SELECT d.dept_no, COUNT(s.salary) AS `sum` FROM dept_emp d JOIN salaries s
+ON d.emp_no = s.emp_no GROUP BY d.dept_no) t1
+ON ds.dept_no = t1.dept_no ORDER BY ds.dept_no;
+或者直接将三张表进行连接：
+SELECT d.dept_no, d.dept_name, count(s.salary) AS SUM
+FROM departments d JOIN dept_emp de ON d.dept_no = de.dept_no
+JOIN salaries s ON de.emp_no = s.emp_no
+GROUP BY d.dept_no ORDER BY d.dept_no;
+
+⭐23. SQL23 对所有员工的薪水按照salary降序进行1-N的排名
+有一个薪水表salaries，对所有员工的薪水按照salary降序先进行1-N的排名，如果salary相同，再按照emp_no升序排列
+难度：较难
+方法1：固定s1的一条记录，利用关联查询的到它的rank
+SELECT s1.emp_no, s1.salary,
+(SELECT COUNT(DISTINCT s2.salary) FROM salaries s2 WHERE s2.salary >= s1.salary) AS `rank`
+FROM salaries s1 ORDER BY s1.salary DESC, s1.emp_no;
+方法2：或者先构建不含salary的rank表t，再将t表和salaries表内接，然后排序得到结果
+SELECT s.emp_no, s.salary, t.rank FROM salaries s JOIN
+(SELECT s1.emp_no, COUNT(DISTINCT s2.salary) AS `rank` FROM salaries s1
+JOIN salaries s2 ON s1.salary <= s2.salary GROUP BY s1.emp_no) t
+ON s.emp_no = t.emp_no ORDER BY s.salary DESC, s.emp_no
+
+24. SQL24 获取所有非manager员工当前的薪水情况
+有一个员工表employees，部门员工关系表dept_emp，部门经理表dept_manager，薪水表salaries
+获取所有非manager员工薪水情况，给出dept_no、emp_no以及salary
+难度：较难？
+SELECT d.dept_no, e.emp_no, s.salary FROM employees e JOIN dept_emp d
+ON e.emp_no = d.emp_no JOIN salaries s ON e.emp_no = s.emp_no
+WHERE e.emp_no NOT IN (SELECT dm.emp_no FROM dept_manager dm);
+或者：
+SELECT de.dept_no, e.emp_no, s.salary
+FROM employees e, dept_emp de, dept_manager dm, salaries s
+WHERE e.emp_no = de.emp_no AND de.dept_no = dm.dept_no AND de.emp_no != dm.emp_no AND e.emp_no = s.emp_no
+
+25. SQL25 获取员工其当前的薪水比其manager当前薪水还高的相关信息
+部门关系表dept_emp,部门经理表dept_manager,薪水表salaries
+难度：困难
+方法1：建立员工薪资表和经理薪资表，之和通过部门进行连接，再进行过滤
+SELECT t1.emp_no, t2.manager_no, t1.emp_salary, t2.manager_salary FROM
+--员工薪资表
+(SELECT de.emp_no AS emp_no, de.dept_no, s1.salary AS emp_salary FROM dept_emp de
+JOIN salaries s1 ON de.emp_no = s1.emp_no) t1
+JOIN
+--经理薪资表
+(SELECT dm.emp_no AS manager_no, dm.dept_no, s2.salary AS manager_salary FROM dept_manager dm
+JOIN salaries s2 ON dm.emp_no = s2.emp_no) t2
+--通过部门进行连接
+ON t1.dept_no = t2.dept_no
+--筛选条件
+WHERE t1.emp_salary > t2.manager_salary
+或者三表之间连接
+SELECT de.emp_no,dm.emp_no AS manager_no,
+s1.salary AS emp_salary,s2.salary AS manager_salary
+FROM dept_emp de, dept_manager dm, salaries s1, salaries s2
+WHERE de.dept_no=dm.dept_no AND de.emp_no=s1.emp_no AND dm.emp_no=s2.emp_no AND s1.salary>s2.salary;
+
+26. SQL26 汇总各个部门当前员工的title类型的分配数目
+有一个部门表departments，部门员工关系表dept_emp，职称表titles
+难度：困难
+SELECT d.dept_no, d.dept_name,t.title, COUNT(t.title) AS `count` FROM
+departments d, dept_emp de, titles t WHERE
+d.dept_no = de.dept_no AND de.emp_no  = t.emp_no
+GROUP BY d.dept_no, t.title ORDER BY d.dept_no, t.title
+
+29. SQL29 使用join查询方式找出没有分类的电影id以及名称
+现有电影信息表film，有类别表category，电影分类表film_category
+使用join查询方式找出没有分类的电影id以及其电影名称。
+方法1：内连接 + NOT IN
+SELECT film_id, title FROM film WHERE film_id NOT IN
+(SELECT f.film_id FROM film f INNER JOIN film_category fc
+ON f.film_id = fc.film_id)
+方法2：左外连接 + IS NULL
+SELECT f.film_id, f.title FROM film f LEFT JOIN film_category fc
+ON f.film_id = fc.film_id WHERE fc.category_id IS NULL;
+
+30. SQL30 使用子查询的方式找出属于Action分类的所有电影对应的title,description
+难度：中等
+SELECT title, description FROM film WHERE film_id IN
+(SELECT film_id FROM film_category fc JOIN category c ON fc.category_id = c.category_id
+WHERE c.name = 'Action')
+
+32. SQL32 将employees表的所有员工的last_name和first_name拼接起来作为Name
+难度：简单
+select CONCAT(CONCAT(last_name," "),first_name) as name  from employees
+
+33. SQL33 创建一个actor表
+难度：中等
+CREATE TABLE actor(
+actor_id SMALLINT(5) NOT NULL,
+first_name VARCHAR(45) NOT NULL,
+last_name VARCHAR(45) NOT NULL,
+last_update DATE NOT NULL,
+PRIMARY KEY(actor_id));
+
+34. SQL34 批量插入数据
+难度：简单
+INSERT INTO actor(actor_id,first_name,last_name,last_update)
+VALUES(1,'PENELOPE','GUINESS','2006-02-15 12:34:33'),
+      (2,'NICK','WAHLBERG','2006-02-15 12:34:33');
+
+35. SQL35 批量插入数据，不使用replace操作
+难度：简单
+mysql中常用的三种插入数据的语句:
+INSERT INTO 表示插入数据，数据库会检查主键，如果出现重复会报错；
+REPLACE INTO  表示插入替换数据，需求表中有PrimaryKey，或者unique索引，如果数据库已经存在数据，则用新数据替换，如果没有数据效果则和insert into一样；
+INSERT IGNORE INTO 表示，如果中已经存在相同的记录，则忽略当前新数据；
+INSERT IGNORE INTOactor VALUES("3","ED","CHASE","2006-02-15 12:34:33");
+
+36. SQL36 创建一个actor_name表
+请你创建一个actor_name表，并且将actor表中的所有first_name以及last_name导入该表.
+难度：中等
+CREATE TABLE IF NOT EXISTS actor_name(
+    first_name VARCHAR(45) NOT NULL,
+    last_name VARCHAR(45) NOT NULL);
+INSERT INTO actor_name (SELECT first_name,last_name FROM actor);
+
+37. SQL37 对first_name创建唯一索引uniq_idx_firstname
+难度：中等
+CREATE UNIQUE INDEX uniq_idx_firstname ON actor(first_name);
+CREATE INDEX idx_lastname ON actor(last_name);
+// 该语句添加一个主键，这意味着索引值必须是唯一的，且不能为NULL。
+ALTER TABLE tbl_name ADD PRIMARY KEY (col_list);
+// 该语句添加一个主键，这意味着索引值必须是唯一的，且不能为NULL。
+ALTER TABLE tbl_name ADD PRIMARY KEY (col_list);
+// 添加普通索引，索引值可出现多次。
+ALTER TABLE tbl_name ADD INDEX index_name (col_list);
+
+38. SQL38 针对actor表创建视图actor_name_view
+难度：中等
+CREATE VIEW actor_name_view (first_name_v, last_name_v) AS
+SELECT first_name, last_name FROM actor;
+或者
+CREATE VIEW actor_name_view AS
+SELECT first_name AS first_name_v, last_name AS last_name_v FROM actor;
+视图的作用：使得一些复杂的连接操作直接查询，只关注需要关注的字段，保护一些隐私字段增加安全性
+
+39. SQL39 针对上面的salaries表emp_no字段创建索引idx_emp_no
+难度：中等
+SELECT * FROM salaries FORCE INDEX(idx_emp_no) WHERE emp_no = 10005;
+
+40. SQL40 在last_update后面新增加一列名字为create_date
+存在actor表，现在在last_update后面新增加一列名字为create_date,
+类型为datetime, NOT NULL，默认值为'2020-10-01 00:00:00'
+难度：中等
+ALTER TABLE <表名> ADD COLUMN <新字段名> <数据类型> [约束条件] [FIRST|AFTER 已存在的字段名];
+ALTER TABLE actor ADD COLUMN
+create_date DATETIME NOT NULL DEFAULT '2020-10-01 00:00:00' AFTER last_update;
+
+41. SQL41 构造一个触发器audit_log
+难度：中等
+https://blog.csdn.net/weixin_41177699/article/details/80302987
+CREATE TRIGGER audit_log AFTER INSERT ON employees_test FOR EACH ROW
+BEGIN INSERT INTO audit VALUES(new.id,new.name); END
+
+⭐42. SQL42 删除emp_no重复的记录，只保留最小的id对应的记录。
+难度：中等
+DELETE FROM titles_test WHERE id NOT IN
+--需要创建临时表
+(SELECT id FROM (SELECT MIN(id) id FROM titles_test GROUP BY emp_no) a);
+注意：在MYSQL里，不能先select一个表的记录，在按此条件进行更新和删除同一个表的记录，
+解决办法：将select得到的结果，再通过中间表select一遍，这样就规避了错误，这个问题只出现于mysql。
+
+43. SQL43 将所有to_date为9999-01-01的全部更新为NULL
+将所有to_date为9999-01-01的全部更新为NULL,且 from_date更新为2001-01-01
+难度：简单
+UPDATE titles_test SET to_date = NULL, from_date = '2001-01-01'WHERE to_date = '9999-01-01';
+
+44. SQL44 将id=5以及emp_no=10001的行数据替换成id=5以及emp_no=10005
+难度：简单
+https://blog.csdn.net/weixin_42272869/article/details/116480732?spm=1001.2014.3001.5501
+REPLACE INTO titles_test VALUES(5, 10005 ,'Senior Engineer', '1986-06-26', '9999-01-01') ;
+
+45. SQL45 将titles_test表名修改为titles_2017
+难度：简单
+https://dev.mysql.com/doc/refman/8.0/en/alter-table.html
+ALTER TABLE titles_test RENAME AS titles_2017;
+mark：
+ALTER TABLE 表名 ADD 列名/索引/主键/外键等；
+ALTER TABLE 表名 DROP 列名/索引/主键/外键等；
+ALTER TABLE 表名 ALTER 仅用来改变某列的默认值；
+ALTER TABLE 表名 RENAME 列名/索引名 TO 新的列名/新索引名；
+ALTER TABLE 表名 RENAME TO/AS 新表名;
+ALTER TABLE 表名 MODIFY 列的定义但不改变列名；
+ALTER TABLE 表名 CHANGE 列名和定义都可以改变。
+
+46. SQL46 在audit表上创建外键约束，其emp_no对应employees_test表的主键id
+难度：中等
+ALTER TABLE audit ADD CONSTRAINT FOREIGN KEY (emp_no)
+REFERENCES employees_test(id);
+外键的作用：保证数据的参照完整性：主表中的外键作为子表的主键，如一个学生表（主表），成绩表（子表），有了学生信息才有相应的成绩
+
+48. SQL48 将所有获取奖金的员工当前的薪水增加10%
+难度：中等
+UPDATE salaries s SET salary = salary*1.1 WHERE to_date='9999-01-01'
+AND s.emp_no in(select emp_no from emp_bonus);
+
+50. SQL50 将employees表中的所有员工的last_name和first_name通过引号连接起来。
+难度：中等
+SELECT CONCAT(CONCAT(last_name,"'"),first_name) FROM employees;
+
+51. SQL51 查找字符串中逗号出现的次数
+难度：中等
+SELECT id, LENGTH(string) - LENGTH(REPLACE(string, ",", "")) AS cnt FROM strings
+
+52. SQL52 获取employees中的first_name
+请你将employees中的first_name，并按照first_name最后两个字母升序进行输出。
+难度：中等
+SELECT first_name FROM employees ORDER BY RIGHT(first_name, 2);
+RIGHT函数能返回从最右边开始指定长度的字符串。同理LEFT函数就是返回从最左边开始的指定长度字符串。
+
+53. SQL53 按照dept_no进行汇总
+按照dept_no进行汇总，属于同一个部门的emp_no按照逗号进行连接，结果给出dept_no以及连接出的结果employees
+难度：中等
+SELECT dept_no, GROUP_CONCAT(emp_no) AS employees FROM dept_emp GROUP BY dept_no;
+聚合函数GROUP_CONCAT(X,Y)，其中X是要连接的字段，Y是连接时用的符号，可省略，默认为逗号。
+此函数必须与GROUP BY配合使用。此题以dept_no作为分组，将每个分组中不同的emp_no用逗号连接起来
+
+54. SQL54 平均工资
+查找排除在职(to_date = '9999-01-01' )员工的最大、最小salary之后，其他的在职员工的平均工资avg_salary。
+难度：中等
+SELECT ((SUM(salary) - MAX(salary) - MIN(salary)) / (COUNT(salary) - 2)) AS avg_salary FROM salaries WHERE to_date = '9999-01-01';
+或者子查询
+SELECT AVG(salary) FROM salaries WHERE to_date = '9999-01-01'
+AND salary NOT IN (SELECT MIN(salary) FROM salaries WHERE to_date = '9999-01-01')
+AND salary NOT IN (SELECT MAX(salary) FROM salaries WHERE to_date = '9999-01-01');
+
+55. SQL55 分页查询employees表，每5行一页，返回第2页的数据
+分页查询employees表，每5行一页，返回第2页的数据
+难度：中等
+SELECT * FROM employees LIMIT 5,5;
+其中LIMIT X,Y 表示从X开始后的Y行，如果是LIMIT X则默认是从0开始后的X行
+
+57. SQL57 使用含有关键字exists查找未分配具体部门的员工的所有信息。
+有表employees和dept_emp
+难度：中等
+SELECT * FROM employees WHERE NOT EXISTS
+(SELECT emp_no FROM dept_emp WHERE employees.emp_no = dept_emp.emp_no);
+EXISTS语句：执行employees.length次
+指定一个子查询，检测行的存在。遍历循环外表，然后看外表中的记录有没有和内表的数据一样的。匹配上就将结果放入结果集中。
+
+59. SQL59 获取有奖金的员工相关信息。
+现有员工表employees，有员工奖金表emp_bonus，有薪水表salaries
+其中bonus类型btype为1其奖金为薪水salary的10%，btype为2其奖金为薪水的20%，其他类型均为薪水的30%。 to_date='9999-01-01'表示当前薪水。
+请你给出emp_no、first_name、last_name、奖金类型btype、对应的当前薪水情况salary以及奖金金额bonus。
+bonus结果保留一位小数，输出结果按emp_no升序排序。
+难度：较难
+SELECT eb.emp_no, e.first_name, e.last_name, eb.btype, s.salary,
+CASE WHEN btype = 1 THEN salary * 0.1
+WHEN btype = 2 THEN salary * 0.2
+ELSE salary * 0.3
+END bonus
+FROM employees e, emp_bonus eb, salaries s
+WHERE e.emp_no = eb.emp_no AND eb.emp_no = s.emp_no AND s.to_date = '9999-01-01' ORDER BY eb.emp_no
+
+⭐60. SQL60 统计salary的累计和running_total
+按照salary的累计和running_total，其中running_total为前N个当前( to_date = '9999-01-01')员工的salary累计和，其他以此类推。
+难度：较难
+SELECT s1.emp_no, s1.salary,
+(SELECT SUM(s2.salary) FROM salaries s2 WHERE s1.emp_no >= s2.emp_no
+AND s2.to_date = '9999-01-01') AS running_total
+FROM salaries s1 WHERE s1.to_date = '9999-01-01' ORDER BY s1.emp_no
+
+⭐61.SQL61 给出employees表中排名为奇数行的first_name
+请你在不打乱原序列顺序的情况下，输出：按first_name排升序后，取奇数行的first_name。
+难度：较难
+SELECT e.first_name FROM employees e WHERE e.first_name IN
+(SELECT e1.first_name FROM employees e1 LEFT JOIN employees e2
+ON e1.first_name >= e2.first_name GROUP BY e1.first_name
+HAVING COUNT(e2.first_name) % 2 = 1 ORDER BY e1.first_name)
+或者：
+SELECT e1.first_name FROM employees e1
+WHERE (SELECT COUNT(*) FROM employees e2 WHERE e1.first_name >= e2.first_name) % 2 = 1;
+
+62. SQL62 出现三次以上相同积分的情况
+id为用户主键id，number代表积分情况，让你写一个sql查询，积分表里面出现三次以及三次以上的积分
+注意：若有多个符合条件的number，则按number升序排序输出
+难度：简单
+SELECT number FROM grade GROUP BY number HAVING COUNT(number) >= 3 ORDER BY number ASC;
+
+⭐63. SQL63 刷题通过的题目排名
+在牛客刷题有一个通过题目个数的(passing_number)表，id是主键
+请你根据上表，输出通过的题目的排名，通过题目个数相同的，排名相同，此时按照id升序排列
+难度：中等
+SELECT pn1.id, pn1.number,
+(SELECT COUNT(DISTINCT pn2.number) FROM passing_number pn2 WHERE  pn2.number >= pn1.number)
+AS t_rank FROM passing_number pn1 ORDER BY t_rank, pn1.id;
+做法2： 窗口函数 MySQL8.0
+SELECT id, number, dense_rank() over (ORDER BY number DESC) t_rank FROM passing_number
+row_number() 对应唯一排序：1、2、3、4
+dense_rank() 对应相同次序可重复，但不跳过下一个次序值：1、2、2、3
+rank() 对应相同次序可重复，并且跳过下一个次序值：1、2、2、4
+
+64. SQL64 找到每个人的任务
+有一个person表，主键是id，有一个任务(task)表如下，主键也是id
+请你找到每个人的任务情况，并且输出出来，没有任务的也要输出，而且输出结果按照person的id升序排序
+难度：简单
+SELECT p.id, name, content FROM person p LEFT JOIN task t ON p.id = t.person_id ORDER BY p.id
+
+⭐65. SQL65 异常的邮件概率
+有一个邮件(email)表，id为主键， type是枚举类型，枚举成员为(completed，no_completed)，completed代表邮件发送是成功的，no_completed代表邮件是发送失败的。
+下面是一个用户(user)表，id为主键（注意这里id代表用户编号），is_blacklist为0代表为正常用户，is_blacklist为1代表为黑名单用户
+现在让你写一个sql查询，每一个日期里面，正常用户发送给正常用户邮件失败的概率是多少，结果保留到小数点后面3位(3位之后的四舍五入)，并且按照日期升序排序
+难度：较难
+SELECT e.date,ROUND(SUM(CASE e.type WHEN 'completed' THEN 0 ELSE 1 END)*1.0 / COUNT(e.date),3)
+FROM email AS e JOIN `user` AS u1 ON e.send_id = u1.id AND u1.is_blacklist=0
+JOIN `user` AS u2 ON e.receive_id = u2.id AND u2.is_blacklist=0 GROUP BY e.date ORDER BY e.date
+知识点： CASE 字段 WHEN 条件 THEN 条件满足的值 ELSE 条件不满足的值 END
+
+66. SQL66 牛客每个人最近的登录日期(一)
+有一个登录(login)记录表,请你写出一个sql语句查询每个用户最近一天登录的日子，并且按照user_id升序排序
+难度：简单
+SELECT user_id, MAX(`date`) AS id FROM login GROUP BY user_id ORDER BY user_id
+
+⭐67. SQL67 牛客每个人最近的登录日期(二)
+有一个登录(login)记录表，还有一个用户(user)表，还有一个客户端(client)表
+请你写出一个sql语句查询每个用户最近一天登录的日子，用户的名字，以及用户用的设备的名字，并且查询结果按照user的name升序排序
+难度：较难
+SELECT u.name AS u_n ,c.name AS c_n ,l.date FROM login l
+JOIN user u ON l.user_id = u.id
+JOIN client c ON l.client_id=c.id
+WHERE (l.user_id,l.date) IN (
+  SELECT user_id, MAX(`date`) FROM login GROUP BY user_id)
+ORDER BY u_n;
+
+⭐68. SQL68 牛客每个人最近的登录日期(三)
+牛客每天有很多人登录，请你统计一下牛客新登录用户的次日成功的留存率，
+有一个登录(login)记录表，请你写出一个sql语句查询新登录用户次日成功的留存率，即第1天登陆之后，第2天再次登陆的概率,保存小数点后面3位(3位之后的四舍五入)
+难度：较难
+SELECT ROUND(COUNT(DISTINCT user_id)*1.0 / (SELECT COUNT(DISTINCT user_id) FROM login), 3)
+FROM login WHERE (user_id, date) IN
+(SELECT user_id, DATE_ADD(MIN(date),INTERVAL 1 DAY) FROM login GROUP BY user_id);
+解题公式：（第一天登录的新用户并且第二天也登录的用户）/（总用户）
