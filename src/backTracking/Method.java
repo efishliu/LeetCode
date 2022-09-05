@@ -59,7 +59,12 @@ package backTracking;
 
 
     组合问题： index回溯 + 剪枝
-
+    组合问题和排列问题的区别：
+        组合问题：
+            Arrays.sort(candidates);
+            for(int i = index; i < candidates.length; i++)
+        排列问题： for(int i = 0; i < n; i++)
+    即组合问题事先排序，并且dfs内循环从layer开始，而排列问题只要没访问过就选
     组合和排列中，如果数组中存在重复元素，返回组合或排列的方法：
         定义一个visited数组记录当前的选取情况
         for(int i = ..; i < n; i++)
