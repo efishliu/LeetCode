@@ -21,7 +21,7 @@ public class LC5_LongestPalindrome {
         for(int k = 2;k <= n;k++){
             for(int i = 0;i < n;i++){
                 int j = i + k - 1;
-                if(j  < n){
+                if(j < n){
                     if(s.charAt(i) == s.charAt(j)){
                         if(k == 2){
                             dp[i][j] = true;
